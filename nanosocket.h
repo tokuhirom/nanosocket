@@ -80,10 +80,10 @@ namespace nanosocket {
             return true;
         }
         int write(const char *buf, size_t siz) {
-            return ::write(fd_, buf, siz);
+            return ::send(fd_, buf, siz, 0);
         }
         int read(char *buf, size_t siz) {
-            return ::read(fd_, buf, siz);
+            return ::recv(fd_, buf, siz, 0);
         }
         int close() {
             return ::close(fd_);
