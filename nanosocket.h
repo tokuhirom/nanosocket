@@ -36,6 +36,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <string>
+#include <cstring>
 
 namespace nanosocket {
     /**
