@@ -77,6 +77,13 @@ namespace nanosocket {
          * @return true if success to connect.
          */
         bool connect(const char *host, short port) {
+            // open socket as tcp/inet by default.
+            if (fd_ == -1) {
+                if (!this->socket(AF_INET, SOCK_STREAM)) {
+                    return false;
+                }
+            }
+
             struct hostent * servhost = gethostbyname(host);
             if (!servhost) {
                 errstr_ = std::string("error in gethostbyname: ") + host;
