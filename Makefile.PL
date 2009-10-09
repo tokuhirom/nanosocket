@@ -8,4 +8,6 @@ $e->program('eg/server', 'eg/server.cc');
 
 tests 't/*.t t/*/*.t t/*/*/*.t';
 
+test_requires 'Test::TCP';
+
 WriteMakefileForC;
