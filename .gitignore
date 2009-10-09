@@ -1,2 +1,4 @@
 Makefile
 t/01_simple
+eg/client
+eg/server

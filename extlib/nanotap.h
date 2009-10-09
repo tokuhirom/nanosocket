@@ -42,6 +42,10 @@ static void is(T got, T expected, const char *msg) {
     }
 }
 
+static void ok(int x) {
+    ok(x, "");
+}
+
 static void string_contains(const std::string &got, const char *expected, const char *msg) {
     string_contains(got.c_str(), expected, msg);
 }
