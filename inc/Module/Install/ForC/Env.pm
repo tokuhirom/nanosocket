@@ -2,11 +2,12 @@
 package Module::Install::ForC::Env;
 use strict;
 use warnings;
-use Storable ();
-use Config;
-use File::Temp ();
-use POSIX;
-use Text::ParseWords ();
+use Storable ();         # first released with perl 5.007003
+use Config;              # first released with perl 5.00307
+use File::Temp ();       # first released with perl 5.006001
+use POSIX;               # first released with perl 5
+use Text::ParseWords (); # first released with perl 5
+use IPC::Open3;          # first released with perl 5
 
 sub DEBUG () { $ENV{DEBUG} }
 
@@ -16,9 +17,6 @@ sub new {
     # platform specific vars
     my %platformvars = do {
         my %unix = (
-            CC  => $ENV{CC}  || 'gcc',
-            CPP => $ENV{CPP} || 'cpp',
-            CXX => $ENV{CXX} || 'g++',
             PREFIX        => $ENV{PREFIX} || '/usr/',
             LIBPREFIX     => 'lib',
             LIBSUFFIX     => '.a',
@@ -27,10 +25,7 @@ sub new {
             CCDLFLAGS     => ['-fPIC'], # TODO: rename
         );
         my %win32 = (
-            CC  => $ENV{CC}  || 'gcc',
-            CPP => $ENV{CPP} || 'cpp',
-            CXX => $ENV{CXX} || 'g++',
-            PREFIX      => 'C:\\',
+            PREFIX      => $ENV{PREFIX} || 'C:\\',
             LIBPREFIX   => '',
             LIBSUFFIX   => '.lib',
             SHLIBPREFIX => '',
@@ -49,6 +44,9 @@ sub new {
     };
 
     my $opt = {
+        CC  => $ENV{CC}  || $Config{cc}  || 'gcc',
+        CPP => $ENV{CPP} || $Config{cpp} || 'cpp',
+        CXX => $ENV{CXX} || (_has_gplusplus() ? 'g++' : $Config{cc}),
         LD            => $Config{ld},
         LDFLAGS       => '',
         CCFLAGS       => [],
@@ -57,7 +55,7 @@ sub new {
         LIBPATH       => [],
         SHLIBSUFFIX   => '.' . $Config{so},
         RANLIB        => 'ranlib',
-        PROGSUFFIX    => ( $Config{exe_ext} ? ( '.' . $Config{exe_ext} ) : '' ),
+        PROGSUFFIX    => $Config{exe_ext} || '', # $Config{exe_ext} is 'exe' or ''
         CXXFILESUFFIX => [ '.c++', '.cc', '.cpp', '.cxx' ],
         CFILESUFFIX   => ['.c'],
         AR            => $Config{ar},
@@ -79,6 +77,19 @@ sub new {
     }
 
     return $self;
+}
+
+# do you have g++?
+# @return true if user can execute g++.
+sub _has_gplusplus {
+    my($wtr, $rdr, $err);
+    if ($^O eq 'MSWin32') {
+        return !system('g++ --version 2> NUL > NUL');
+    } else {
+        my $pid = open3($wtr, $rdr, $err, 'g++', '--version') or return 0;
+        waitpid($pid, 0);
+        return WIFEXITED($?) && WEXITSTATUS($?) == 0 ? 1 : 0;
+    }
 }
 
 # pkg-config
@@ -237,21 +248,37 @@ sub program {
 
     my $target = "$bin" . $clone->{PROGSUFFIX};
     _push_target($target);
-    push @Module::Install::ForC::TESTS, $target if $target =~ m{^t/};
 
     my @objects = $clone->_objects($srcs);
 
     my $ld = $clone->_ld(@$srcs);
 
+    my $target_with_opt = ($self->{CC} =~ /^cl/ && $^O eq 'MSWin32') ? "/out:$target" : "-o $target";
     $self->_push_postamble(<<"...");
 $target: @objects
-	$ld $clone->{LDFLAGS} -o $target @objects @{[ $clone->_libpath ]} @{[ $clone->_libs ]}
+    $ld $clone->{LDFLAGS} $target_with_opt @objects @{[ $clone->_libpath ]} @{[ $clone->_libs ]}
 
 ...
 
     $clone->_compile_objects($srcs, \@objects, '');
 
     return $target;
+}
+
+sub test {
+    my ($self, $binary, $src, %specific_opts) = @_;
+    my $test_file = "$binary\.t";
+    my $test_executable = $self->program($binary, $src, %specific_opts);
+
+    $self->_push_postamble(<<"...");
+$test_file: $test_executable
+    \$(PERL) -e 'print "exec q{$test_executable} or die \$!"' > $test_file
+
+...
+
+    push @Module::Install::ForC::TESTS, $test_file;
+
+    return $test_file;
 }
 
 sub _is_cpp {
@@ -261,7 +288,8 @@ sub _is_cpp {
 }
 
 sub _push_postamble {
-    $Module::Install::ForC::POSTAMBLE .= $_[1];
+    (my $src = $_[1]) =~ s/^[ ]{4}/\t/gmsx;
+    $Module::Install::ForC::POSTAMBLE .= $src;
 }
 
 sub _cpppath {
@@ -276,11 +304,19 @@ sub _compile_objects {
     for my $i (0..@$srcs-1) {
         next if $Module::Install::ForC::OBJECTS{$objects->[$i]}++ != 0;
         my $compiler = $self->_is_cpp($srcs->[$i]) ? $self->{CXX} : $self->{CC};
+        my $object_with_opt = ($compiler =~ /^cl/ && $^O eq 'MSWin32') ? "-c -Fo$objects->[$i]" : "-c -o $objects->[$i]";
         $self->_push_postamble(<<"...");
 $objects->[$i]: $srcs->[$i] Makefile
-	$compiler $opt @{ $self->{CCFLAGS} } @{[ $self->_cpppath ]} -c -o $objects->[$i] $srcs->[$i]
+	$compiler $opt @{ $self->{CCFLAGS} } @{[ $self->_cpppath ]} $object_with_opt $srcs->[$i]
 
 ...
+        if ($^O ne 'MSWin32' && $compiler ne 'tcc') {
+            my $deps = `$compiler -MM $srcs->[$i]`;
+            my $basedir = File::Basename::dirname($srcs->[$i]);
+            $self->_push_postamble(<<"...") if $deps;
+$basedir/$deps
+...
+        }
     }
 }
 
@@ -356,4 +392,4 @@ int main() {
 1;
 __END__
 
-#line 454
+#line 503

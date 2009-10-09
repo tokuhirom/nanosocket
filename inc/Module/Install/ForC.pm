@@ -2,12 +2,12 @@
 package Module::Install::ForC;
 use strict;
 use warnings;
-our $VERSION = '0.04';
+our $VERSION = '0.06';
 use 5.008000;
 use Module::Install::ForC::Env;
-use Config;
-use File::Basename ();
-use FindBin;
+use Config;              # first released with perl 5.00307
+use File::Basename ();   # first released with perl 5
+use FindBin;             # first released with perl 5.00307
 
 use Module::Install::Base;
 our @ISA     = qw(Module::Install::Base);
@@ -25,6 +25,7 @@ sub env_for_c {
 }
 sub is_linux () { $^O eq 'linux'  }
 sub is_mac   () { $^O eq 'darwin' }
+sub is_win32 () { $^O eq 'MSWin32' }
 sub WriteMakefileForC {
     my $self = shift;
 
@@ -60,11 +61,13 @@ POSTOP = \$(NOECHO) \$(NOOP)
 DIST_DEFAULT = tardist
 DIST_CP = best
 PERLRUN = \$(PERL)
+TEST_VERBOSE=0
+TEST_FILES=@{[ $self->tests || '' ]}
 
 all: @Module::Install::ForC::TARGETS
 
 test: @TESTS
-	prove --exec "/bin/sh -c " @TESTS
+    PERL_DL_NONLAZY=1 \$(PERLRUN) "-MExtUtils::Command::MM" "-e" "test_harness(\$(TEST_VERBOSE), 'inc')" \$(TEST_FILES)
 
 dist: \$(DIST_DEFAULT) \$(FIRST_MAKEFILE)
 
@@ -87,7 +90,7 @@ distdir:
 clean:
 	\$(RM) @Module::Install::ForC::TARGETS @{[ keys %Module::Install::ForC::OBJECTS ]}
 	\$(RM) Makefile
-	$Config{rm_try}
+	@{[ $Config{rm_try} || '' ]}
 
 install: all
 	@{[ join("\n\t", map { @{ $_ } } values %Module::Install::ForC::INSTALL) ]}
@@ -103,4 +106,4 @@ manifest:
 1;
 __END__
 
-#line 191
+#line 197
