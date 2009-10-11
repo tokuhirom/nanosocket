@@ -1,5 +1,5 @@
 #include "../nanosocket.h"
-#include "../extlib/nanotap.h"
+#include <nanotap/nanotap.h>
 #include <assert.h>
 
 int main() {
@@ -10,7 +10,7 @@ int main() {
     int received = sock.recv(buf, sizeof(buf));
     assert(received > 0);
     buf[received] = '\0';
-    string_contains(buf, "sledge_sid", "valid content");
+    contains_string(buf, "sledge_sid", "valid content");
     done_testing();
 }
 

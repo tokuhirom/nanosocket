@@ -1,0 +1,3 @@
+[submodule "extlib/nanotap"]
+	path = extlib/nanotap
+	url = git@github.com:tokuhirom/nanotap.git

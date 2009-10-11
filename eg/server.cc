@@ -1,5 +1,5 @@
 #include "../nanosocket.h"
-#include "../extlib/nanotap.h"
+#include <nanotap/nanotap.h>
 #include <stdlib.h>
 #include <assert.h>
 
