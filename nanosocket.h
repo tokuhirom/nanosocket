@@ -29,6 +29,13 @@
 #ifndef NANOSOCKET_H_
 #define NANOSOCKET_H_
 
+#ifdef HAVE_SSL
+#include <openssl/crypto.h>
+#include <openssl/ssl.h>
+#include <openssl/err.h>
+#include <openssl/rand.h>
+#endif
+
 #include <arpa/inet.h>
 #include <errno.h>
 #include <netdb.h>
@@ -48,7 +55,7 @@ namespace nanosocket {
      * The abstraction class of TCP Socket.
      */
     class Socket {
-    private:
+    protected:
         std::string errstr_;
         int fd_;
     public:
@@ -227,6 +234,69 @@ namespace nanosocket {
             return fd_ != -1;
         }
     };
+
+#ifdef HAVE_SSL
+    class SSLSocket:Socket {
+    private:
+        ::SSL *ssl_;
+        ::SSL_CTX *ctx_;
+    public:
+        bool connect(const char *host, short port) {
+            if (Socket::connect(host, port)) {
+                SSL_load_error_strings();
+                SSL_library_init();
+                ctx_ = SSL_CTX_new(SSLv23_client_method());
+                if ( ctx_ == NULL ){
+                    ERR_print_errors_fp(stderr);
+                    return false;
+                }
+                ssl_ = SSL_new(ctx_);
+                if ( ssl_ == NULL ){
+                    ERR_print_errors_fp(stderr);
+                    return false;
+                }
+                if ( SSL_set_fd(ssl_, fd_) == 0 ){
+                    ERR_print_errors_fp(stderr);
+                    return false;
+                }
+                RAND_poll();
+                if (RAND_status() == 0) {
+                    errstr_ = "bad random generator";
+                    return false;
+                }
+                if ( SSL_connect(ssl_) != 1 ){
+                    ERR_print_errors_fp(stderr);
+                    return false;
+                }
+                return true;
+            } else {
+                return false;
+            }
+        }
+        int send(const char *buf, size_t siz) {
+            return SSL_write(ssl_, buf, siz);
+        }
+        int recv(char *buf, size_t siz) {
+            int received = ::SSL_read(ssl_, buf, siz);
+            if (received < 0) {
+                errstr_ = strerror(errno);
+            }
+            return received;
+        }
+        int close() {
+            if ( SSL_shutdown(ssl_) != 1 ){
+                ERR_print_errors_fp(stderr);
+                exit(1);
+            }
+            ::close(fd_);
+            fd_ = -1;
+
+            SSL_free(ssl_); 
+            SSL_CTX_free(ctx_);
+            ERR_free_strings();
+        }
+    };
+#endif
 }
 
 #endif // NANOSOCKET_H_
