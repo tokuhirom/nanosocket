@@ -241,10 +241,15 @@ namespace nanosocket {
         ::SSL *ssl_;
         ::SSL_CTX *ctx_;
     public:
+        static void GlobalInit() {
+            SSL_load_error_strings();
+            SSL_library_init();
+        }
+        static void GlobalCleanup() {
+            ERR_free_strings();
+        }
         bool connect(const char *host, short port) {
             if (Socket::connect(host, port)) {
-                SSL_load_error_strings();
-                SSL_library_init();
                 ctx_ = SSL_CTX_new(SSLv23_client_method());
                 if ( ctx_ == NULL ){
                     ERR_print_errors_fp(stderr);
@@ -293,7 +298,6 @@ namespace nanosocket {
 
             SSL_free(ssl_); 
             SSL_CTX_free(ctx_);
-            ERR_free_strings();
         }
     };
 #endif
