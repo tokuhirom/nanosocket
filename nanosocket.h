@@ -252,16 +252,16 @@ namespace nanosocket {
             if (Socket::connect(host, port)) {
                 ctx_ = SSL_CTX_new(SSLv23_client_method());
                 if ( ctx_ == NULL ){
-                    ERR_print_errors_fp(stderr);
+                    set_errstr();
                     return false;
                 }
                 ssl_ = SSL_new(ctx_);
                 if ( ssl_ == NULL ){
-                    ERR_print_errors_fp(stderr);
+                    set_errstr();
                     return false;
                 }
                 if ( SSL_set_fd(ssl_, fd_) == 0 ){
-                    ERR_print_errors_fp(stderr);
+                    set_errstr();
                     return false;
                 }
                 RAND_poll();
@@ -270,7 +270,7 @@ namespace nanosocket {
                     return false;
                 }
                 if ( SSL_connect(ssl_) != 1 ){
-                    ERR_print_errors_fp(stderr);
+                    set_errstr();
                     return false;
                 }
                 return true;
@@ -284,20 +284,24 @@ namespace nanosocket {
         int recv(char *buf, size_t siz) {
             int received = ::SSL_read(ssl_, buf, siz);
             if (received < 0) {
-                errstr_ = strerror(errno);
+                set_errstr();
             }
             return received;
         }
         int close() {
             if ( SSL_shutdown(ssl_) != 1 ){
-                ERR_print_errors_fp(stderr);
-                exit(1);
+                errstr_ = strerror(errno);
+                return -1;
             }
             ::close(fd_);
             fd_ = -1;
 
             SSL_free(ssl_); 
             SSL_CTX_free(ctx_);
+        }
+        inline void set_errstr() {
+            char buf[120];
+            errstr_ = ERR_error_string(ERR_get_error(), buf);
         }
     };
 #endif
