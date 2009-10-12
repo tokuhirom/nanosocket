@@ -6,8 +6,8 @@ if ($e->have_library('ssl')) {
     $e->test('t/03_ssl', 't/03_ssl.cc');
 }
 $e->test('t/01_simple', 't/01_simple.cc');
-$e->program('eg/client', 'eg/client.cc');
-$e->program('eg/server', 'eg/server.cc');
+$e->program('t/02_server_client', 't/02_server_client.cc');
+$e->program('t/02_server_server', 't/02_server_server.cc');
 
 tests 't/*.t t/*/*.t t/*/*/*.t';
 

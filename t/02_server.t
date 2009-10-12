@@ -5,12 +5,12 @@ use Test::TCP;
 test_tcp(
     client => sub {
         my $port = shift;
-        my $ret = `./eg/client $port`;
+        my $ret = `./t/02_server_client $port`;
         print $ret;
     },
     server => sub {
         my $port = shift;
-        exec './eg/server', $port;
+        exec './t/02_server_server', $port;
     },
 );
 
