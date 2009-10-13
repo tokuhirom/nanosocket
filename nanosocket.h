@@ -293,11 +293,12 @@ namespace nanosocket {
                 errstr_ = strerror(errno);
                 return -1;
             }
-            ::close(fd_);
+            int ret = ::close(fd_);
             fd_ = -1;
 
             SSL_free(ssl_); 
             SSL_CTX_free(ctx_);
+            return ret;
         }
     protected:
         inline void set_errstr() {
