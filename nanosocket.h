@@ -83,7 +83,7 @@ namespace nanosocket {
          * connect socket to the server.
          * @return true if success to connect.
          */
-        bool connect(const char *host, short port) {
+        virtual bool connect(const char *host, short port) {
             // open socket as tcp/inet by default.
             if (fd_ == -1) {
                 if (!this->socket(AF_INET, SOCK_STREAM)) {
@@ -109,17 +109,17 @@ namespace nanosocket {
 
             return true;
         }
-        int send(const char *buf, size_t siz) {
+        virtual int send(const char *buf, size_t siz) {
             return ::send(fd_, buf, siz, 0);
         }
-        int recv(char *buf, size_t siz) {
+        virtual int recv(char *buf, size_t siz) {
             int received = ::read(fd_, buf, siz);
             if (received < 0) {
                 errstr_ = strerror(errno);
             }
             return received;
         }
-        int close() {
+        virtual int close() {
             return ::close(fd_);
         }
         int setsockopt(int level, int optname,
@@ -236,16 +236,16 @@ namespace nanosocket {
     };
 
 #ifdef HAVE_SSL
-    class SSLSocket:Socket {
+    class SSLSocket: public Socket {
     private:
         ::SSL *ssl_;
         ::SSL_CTX *ctx_;
     public:
-        static void GlobalInit() {
+        inline static void GlobalInit() {
             SSL_load_error_strings();
             SSL_library_init();
         }
-        static void GlobalCleanup() {
+        inline static void GlobalCleanup() {
             ERR_free_strings();
         }
         bool connect(const char *host, short port) {
@@ -278,7 +278,7 @@ namespace nanosocket {
                 return false;
             }
         }
-        int send(const char *buf, size_t siz) {
+        inline int send(const char *buf, size_t siz) {
             return SSL_write(ssl_, buf, siz);
         }
         int recv(char *buf, size_t siz) {
@@ -299,6 +299,7 @@ namespace nanosocket {
             SSL_free(ssl_); 
             SSL_CTX_free(ctx_);
         }
+    protected:
         inline void set_errstr() {
             char buf[120];
             errstr_ = ERR_error_string(ERR_get_error(), buf);

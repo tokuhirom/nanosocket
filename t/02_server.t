@@ -5,8 +5,7 @@ use Test::TCP;
 test_tcp(
     client => sub {
         my $port = shift;
-        my $ret = `./t/02_server_client $port`;
-        print $ret;
+        system './t/02_server_client', $port;
     },
     server => sub {
         my $port = shift;
