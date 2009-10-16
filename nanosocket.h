@@ -65,7 +65,7 @@ namespace nanosocket {
         Socket(int fd) {
             fd_ = fd;
         }
-        ~Socket() {
+        virtual ~Socket() {
             if (fd_ != -1) { this->close(); }
         }
         Socket(const Socket &sock) {
