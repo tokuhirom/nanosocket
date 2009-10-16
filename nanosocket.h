@@ -236,17 +236,18 @@ namespace nanosocket {
     };
 
 #ifdef HAVE_SSL
+    static bool ssl_is_initialized;
+
     class SSLSocket: public Socket {
     private:
         ::SSL *ssl_;
         ::SSL_CTX *ctx_;
     public:
-        inline static void GlobalInit() {
-            SSL_load_error_strings();
-            SSL_library_init();
-        }
-        inline static void GlobalCleanup() {
-            ERR_free_strings();
+        SSLSocket() :Socket() {
+            if (!ssl_is_initialized) {
+                ssl_is_initialized = true;
+                SSL_library_init();
+            }
         }
         bool connect(const char *host, short port) {
             if (Socket::connect(host, port)) {
