@@ -8,3 +8,4 @@ t/02_server_server
 *.swp
 *~
 *.exe
+inc/
