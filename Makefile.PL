@@ -1,6 +1,8 @@
 use inc::Module::Install;
 
-my $e = env_for_c(CPPPATH => ['extlib/']);
+clib_setup;
+
+my $e = env_for_c();
 $e->enable_warnings();
 if (is_win32()) {
 	$e->append(LIBS => ['ws2_32']);
@@ -16,5 +18,6 @@ $e->program('t/02_server_server', 't/02_server_server.cc');
 tests 't/*.t t/*/*.t t/*/*/*.t';
 
 test_requires 'Test::TCP';
+requires 'Clib::nanotap';
 
 WriteMakefileForC;

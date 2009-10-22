@@ -287,7 +287,7 @@ namespace nanosocket {
 #ifdef _WIN32
 	    errstr_ = WSAGetLastError();
 #else
-            errstr_ = ERR_error_string(ERR_get_error(), buf);
+        errstr_ = strerror(errno);
 #endif
         }
     };
@@ -348,11 +348,11 @@ namespace nanosocket {
         }
         int close() {
             if ( SSL_shutdown(ssl_) != 1 ){
-		this->set_errstr();
+                this->set_errstr();
                 return -1;
             }
             int ret = ::close(fd_);
-	    sock_ready = false;
+            sock_ready_ = false;
 #ifdef _WIN32
             fd_ = 0;
 #else
