@@ -5,3 +5,6 @@ a.out
 t/03_ssl
 t/02_server_client
 t/02_server_server
+*.swp
+*~
+*.exe

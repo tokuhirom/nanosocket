@@ -36,21 +36,32 @@
 #include <openssl/rand.h>
 #endif
 
-#include <arpa/inet.h>
+#ifdef _WIN32
+#  include <winsock2.h>
+#  include <windows.h>
+#else
+#  include <arpa/inet.h>
+#  include <netdb.h>
+#  include <netinet/in.h>
+#  include <netinet/tcp.h>
+#  include <string.h>
+#  include <sys/socket.h>
+#  include <sys/un.h>
+#  include <unistd.h>
+#endif
+
 #include <errno.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <string.h>
-#include <sys/socket.h>
 #include <sys/types.h>
-#include <sys/un.h>
-#include <unistd.h>
 
 #include <string>
 #include <cstring>
 
 namespace nanosocket {
+#ifdef _WIN32
+   typedef int socklen_t;
+   typedef uint32_t in_addr_t;
+#endif
+
     /**
      * The abstraction class of TCP Socket.
      */
@@ -113,32 +124,50 @@ namespace nanosocket {
             return ::send(fd_, buf, siz, 0);
         }
         virtual int recv(char *buf, size_t siz) {
-            int received = ::read(fd_, buf, siz);
+            int received = ::recv(fd_, buf, siz, 0);
             if (received < 0) {
                 errstr_ = strerror(errno);
             }
             return received;
         }
         virtual int close() {
+#ifdef _WIN32
+            return ::closesocket(fd_);
+#else
             return ::close(fd_);
+#endif
         }
         int setsockopt(int level, int optname,
                               const void *optval, socklen_t optlen) {
+#ifdef _WIN32
+            return ::setsockopt(fd_, level, optname, (const char*)optval, optlen);
+#else
             return ::setsockopt(fd_, level, optname, optval, optlen);
+#endif
         }
         int getsockopt(int level, int optname,
                               const void *optval, socklen_t optlen) {
+	// FIXME: BUG
+#ifdef _WIN32
+            return ::setsockopt(fd_, level, optname, (const char*)optval, optlen);
+#else
             return ::setsockopt(fd_, level, optname, optval, optlen);
+#endif
         }
         /**
          * return latest error message.
          */
         std::string errstr() { return errstr_; }
         int fd() { return fd_; }
+
+#ifndef fileno
         int fileno() { return fd_; }
+#endif
+
 #ifdef AF_UNIX
+#ifndef _WIN32
         bool bind_unix(const std::string &path) {
-            struct sockaddr_un addr;
+            struct ::sockaddr_un addr;
             memset(&addr, 0, sizeof(struct sockaddr_un)); // clear
             if ((unsigned int)path.length() >= sizeof(addr.sun_path)) {
                 errstr_ = "socket path too long";
@@ -151,7 +180,9 @@ namespace nanosocket {
             return this->bind((const sockaddr*)&addr, len);
         }
 #endif
+#endif
 #if defined(AF_INET6)
+#ifndef _WIN32 // TODO: win32 support
         bool bind_inet6(const char *host, short port) {
             struct sockaddr_in6 addr;
             memset(&addr, 0, sizeof(sockaddr_in6)); // clear
@@ -167,6 +198,7 @@ namespace nanosocket {
             addr.sin6_port = htons(port);
             return this->bind((const sockaddr*)&addr, sizeof(sockaddr_in6));
         }
+#endif
 #endif
         bool bind_inet(const char *host, short port) {
             struct sockaddr_in addr;
