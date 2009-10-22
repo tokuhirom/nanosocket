@@ -2,7 +2,7 @@ use inc::Module::Install;
 
 my $e = env_for_c(CPPPATH => ['extlib/']);
 $e->enable_warnings();
-if (is_windows()) {
+if (is_win32()) {
 	$e->append(LIBS => ['ws2_32']);
 }
 if ($e->have_library('ssl')) {

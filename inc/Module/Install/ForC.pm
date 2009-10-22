@@ -2,7 +2,7 @@
 package Module::Install::ForC;
 use strict;
 use warnings;
-our $VERSION = '0.10';
+our $VERSION = '0.09';
 use 5.008000;
 use Module::Install::ForC::Env;
 use Config;              # first released with perl 5.00307
@@ -47,7 +47,7 @@ sub _gen_makefile {
             VERSION      => $self->version,
         }
     );
-    my $mm_params = join("\n", map { $_.'='.($mm->{$_} || '') } qw/FIRST_MAKEFILE MOD_INSTALL ABSPERL ABSPERLRUN VERBINST UNINST PERM_DIR PERL PREOP TRUE TAR RM_F RM_RF NOECHO NOOP INSTALLARCHLIB INSTALL_BASE DIST_CP DIST_DEFAULT POSTOP COMPRESS TARFLAGS TO_UNIX PERLRUN DISTVNAME VERSION NAME ECHO ECHO_N MAKE MV SUFFIX ZIP SHAR FULLPERLRUN FULLPERL USE_MAKEFILE FIXIN DOC_INSTALL UNINSTALL CP INST_LIB INST_ARCHLIB/);
+    my $mm_params = join("\n", map { $_.'='.($mm->{$_} || '') } qw/FIRST_MAKEFILE MOD_INSTALL ABSPERL ABSPERLRUN VERBINST UNINST PERM_DIR PERL PREOP TRUE TAR RM_F RM_RF NOECHO NOOP INSTALLARCHLIB INSTALL_BASE DIST_CP DIST_DEFAULT POSTOP COMPRESS TARFLAGS TO_UNIX PERLRUN DISTVNAME VERSION NAME ECHO MAKE MV SUFFIX ZIP SHAR/);
     (my $make = <<"...") =~ s/^[ ]{4}/\t/gmsx;
 $mm_params
 TEST_VERBOSE=0
@@ -55,15 +55,13 @@ TEST_FILES=@{[ $self->tests || '' ]}
 
 .PHONY: all config static dynamic test linkext manifest blibdirs clean realclean disttest distdir
 
-@{[ $mm->special_targets ]}
-
 all: @Module::Install::ForC::TARGETS
 
 config :: \$(FIRST_MAKEFILE)
     \$(NOECHO) \$(NOOP)
 
 test: @TESTS
-    @{[ $mm->test_via_harness('$(FULLPERLRUN)', '$(TEST_FILES)') ]}
+    PERL_DL_NONLAZY=1 \$(PERLRUN) "-MExtUtils::Command::MM" "-e" "test_harness(\$(TEST_VERBOSE), 'inc')" \$(TEST_FILES)
 
 dist: \$(DIST_DEFAULT) \$(FIRST_MAKEFILE)
 
@@ -103,4 +101,4 @@ install: all config
 1;
 __END__
 
-#line 194
+#line 192
