@@ -60,6 +60,9 @@ namespace nanosocket {
 #ifdef _WIN32
    typedef int socklen_t;
    typedef uint32_t in_addr_t;
+   typedef SOCKET nanosock_t;
+#else
+   typedef int nanosock_t;
 #endif
 
     /**
@@ -68,25 +71,38 @@ namespace nanosocket {
     class Socket {
     protected:
         std::string errstr_;
-        int fd_;
+        nanosock_t fd_;
+	bool sock_ready_;
     public:
         Socket() {
+	    sock_ready_ = false;
+#ifdef _WIN32
+            fd_ = 0;
+#else
             fd_ = -1;
+#endif
         }
         Socket(int fd) {
+	    sock_ready_ = true;
             fd_ = fd;
         }
         virtual ~Socket() {
-            if (fd_ != -1) { this->close(); }
+            if (sock_ready_) { this->close(); }
         }
         Socket(const Socket &sock) {
             this->fd_ = sock.fd_;
         }
         bool socket(int domain, int type) {
-            if ((fd_ = ::socket(domain, type, 0)) >= 0) {
+            nanosock_t fd = ::socket(domain, type, 0);
+#ifdef _WIN32
+            if (fd != INVALID_SOCKET) {
+#else
+            if (fd >= 0) {
+#endif
+		fd_ = fd;
                 return true;
             } else {
-                errstr_ = strerror(errno);
+		this->set_errstr();
                 return false;
             }
         }
@@ -96,7 +112,7 @@ namespace nanosocket {
          */
         virtual bool connect(const char *host, short port) {
             // open socket as tcp/inet by default.
-            if (fd_ == -1) {
+            if (!sock_ready_) {
                 if (!this->socket(AF_INET, SOCK_STREAM)) {
                     return false;
                 }
@@ -114,7 +130,7 @@ namespace nanosocket {
             memcpy(&addr.sin_addr, servhost->h_addr, servhost->h_length);
 
             if (::connect(fd_, (struct sockaddr *)&addr, sizeof(addr)) == -1){
-                errstr_ = strerror(errno);
+		this->set_errstr();
                 return false;
             }
 
@@ -126,7 +142,7 @@ namespace nanosocket {
         virtual int recv(char *buf, size_t siz) {
             int received = ::recv(fd_, buf, siz, 0);
             if (received < 0) {
-                errstr_ = strerror(errno);
+		this->set_errstr();
             }
             return received;
         }
@@ -164,7 +180,7 @@ namespace nanosocket {
         int fileno() { return fd_; }
 #endif
 
-#ifdef AF_UNIX
+#if defined(AF_UNIX)
 #ifndef _WIN32
         bool bind_unix(const std::string &path) {
             struct ::sockaddr_un addr;
@@ -182,12 +198,13 @@ namespace nanosocket {
 #endif
 #endif
 #if defined(AF_INET6)
-#ifndef _WIN32 // TODO: win32 support
+#  ifdef inet_pton
         bool bind_inet6(const char *host, short port) {
             struct sockaddr_in6 addr;
             memset(&addr, 0, sizeof(sockaddr_in6)); // clear
             addr.sin6_family = AF_INET6;
-            int pton_ret = inet_pton(AF_INET6, host, addr.sin6_addr.s6_addr);
+            int pton_ret = ::inet_pton(AF_INET6, host, addr.sin6_addr.s6_addr);
+            // int pton_ret = ::inet_pton(AF_INET6, host, addr.sin6_addr.s6_addr);
             if (pton_ret == 0) {
                 errstr_ = "invalid ip form";
                 return false;
@@ -198,7 +215,7 @@ namespace nanosocket {
             addr.sin6_port = htons(port);
             return this->bind((const sockaddr*)&addr, sizeof(sockaddr_in6));
         }
-#endif
+#  endif
 #endif
         bool bind_inet(const char *host, short port) {
             struct sockaddr_in addr;
@@ -218,7 +235,7 @@ namespace nanosocket {
             if (::bind(fd_, addr, len) == 0) {
                 return true;
             } else {
-                errstr_ = strerror(errno);
+		this->set_errstr();
                 return false;
             }
         }
@@ -229,7 +246,7 @@ namespace nanosocket {
             if (::listen(fd_, backlog) == 0) {
                 return true;
             } else {
-                errstr_ = strerror(errno);
+		this->set_errstr();
                 return false;
             }
         }
@@ -237,7 +254,7 @@ namespace nanosocket {
             if (::getpeername(fd_, name, namelen) == 0) {
                 return true;
             } else {
-                errstr_ = strerror(errno);
+		this->set_errstr();
                 return false;
             }
         }
@@ -245,7 +262,7 @@ namespace nanosocket {
             if (::getsockname(fd_, name, namelen) == 0) {
                 return true;
             } else {
-                errstr_ = strerror(errno);
+		this->set_errstr();
                 return false;
             }
         }
@@ -258,12 +275,20 @@ namespace nanosocket {
             if ((newfd = ::accept(fd_, addr, addrlen)) >= 0) {
                 return newfd;
             } else {
-                errstr_ = strerror(errno);
+		this->set_errstr();
                 return -1;
             }
         }
         operator bool() const {
-            return fd_ != -1;
+            return sock_ready_;
+        }
+    protected:
+        inline void set_errstr() {
+#ifdef _WIN32
+	    errstr_ = WSAGetLastError();
+#else
+            errstr_ = ERR_error_string(ERR_get_error(), buf);
+#endif
         }
     };
 
@@ -323,11 +348,16 @@ namespace nanosocket {
         }
         int close() {
             if ( SSL_shutdown(ssl_) != 1 ){
-                errstr_ = strerror(errno);
+		this->set_errstr();
                 return -1;
             }
             int ret = ::close(fd_);
+	    sock_ready = false;
+#ifdef _WIN32
+            fd_ = 0;
+#else
             fd_ = -1;
+#endif
 
             SSL_free(ssl_); 
             SSL_CTX_free(ctx_);
