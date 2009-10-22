@@ -29,11 +29,11 @@
 #ifndef NANOSOCKET_H_
 #define NANOSOCKET_H_
 
-#ifdef HAVE_SSL
-#include <openssl/crypto.h>
-#include <openssl/ssl.h>
-#include <openssl/err.h>
-#include <openssl/rand.h>
+#ifdef HAVE_LIBSSL
+#  include <openssl/crypto.h>
+#  include <openssl/ssl.h>
+#  include <openssl/err.h>
+#  include <openssl/rand.h>
 #endif
 
 #ifdef _WIN32
@@ -292,7 +292,7 @@ namespace nanosocket {
         }
     };
 
-#ifdef HAVE_SSL
+#ifdef HAVE_LIBSSL
     static bool ssl_is_initialized;
 
     class SSLSocket: public Socket {
