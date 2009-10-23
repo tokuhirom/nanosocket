@@ -1,5 +1,6 @@
 use inc::Module::Install;
 name 'Clib-nanosocket';
+all_from 'nanosocket.pm';
 
 clib_setup;
 
