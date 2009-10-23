@@ -29,6 +29,8 @@
 #ifndef NANOSOCKET_H_
 #define NANOSOCKET_H_
 
+#include <nanosocket/nanosocket_config.h>
+
 #ifdef HAVE_LIBSSL
 #  include <openssl/crypto.h>
 #  include <openssl/ssl.h>

@@ -18,9 +18,11 @@ $e->program('t/02_server_server', 't/02_server_server.cc');
 
 tests 't/*.t t/*/*.t t/*/*/*.t';
 
-clib_header 'nanotap.h';
+clib_header 'nanosocket.h';
+clib_header 'nanosocket_config.h';
 
 test_requires 'Test::TCP';
 requires 'Clib::nanotap';
 
 WriteMakefileForC;
+WriteHeaderForC('nanosocket_config.h');

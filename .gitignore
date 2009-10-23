@@ -9,3 +9,4 @@ t/02_server_server
 *~
 *.exe
 inc/
+nanosocket_config.h
