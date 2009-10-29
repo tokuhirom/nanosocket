@@ -25,5 +25,7 @@ clib_header 'nanosocket_config.h';
 test_requires 'Test::TCP';
 requires 'Clib::nanotap';
 
+use_nanotap;
+
 WriteMakefileForC;
 WriteHeaderForC('nanosocket_config.h');
